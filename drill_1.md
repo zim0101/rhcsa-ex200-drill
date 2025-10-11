@@ -3,6 +3,24 @@
 
 ---
 
+## DRILL A PRACTICE FLOW
+
+- [ ] Break Root Password
+- [ ] Configure Network
+- [ ] Add/Update Repository
+- [ ] User and Groups
+- [ ] MBR & GPT Partitions
+- [ ] PV -> VG -> LV -> FS -> Mount -> fstab
+- [ ] Extend VG and LV (ext4, xfx)
+- [ ] LV -> SWAP -> fstab
+- [ ] /swapfile -> fstab
+- [ ] Container
+- [ ] Firewall
+- [ ] SSH
+- [ ] Selinux
+
+---
+
 ## 🎯 SCENARIO 1: SYSTEM RECOVERY (15 minutes)
 
 ### THE SITUATION:
@@ -1124,7 +1142,7 @@ sudo semanage fcontext -l | grep '/web'
 
 ---
 
-## 🎯 SCENARIO 12: CONTAINER MANAGEMENT (15 minutes)
+## 🎯 SCENARIO 10: CONTAINER MANAGEMENT (15 minutes)
 
 ### THE SITUATION:
 Deploy a containerized application using Podman, configure persistent storage, and set it up as a systemd service for automatic startup.
@@ -1275,28 +1293,6 @@ curl http://localhost:8081
 podman ps
 ```
 
-### Advanced: Multi-container with Pod:
-```bash
-# Create pod (group of containers)
-podman pod create --name mypod -p 8082:80
-
-# Run containers in pod
-podman run -d --pod mypod --name nginx-pod nginx
-podman run -d --pod mypod --name busybox-pod busybox sleep 3600
-
-# List pods
-podman pod list
-
-# View pod details
-podman pod inspect mypod
-
-# Stop pod
-podman pod stop mypod
-
-# Remove pod
-podman pod rm mypod
-```
-
 ### Container Images:
 ```bash
 # View image details
@@ -1352,7 +1348,7 @@ loginctl show-user $USER | grep Linger
 
 ---
 
-## 🎯 SCENARIO 13: YUM REPOSITORY MANAGEMENT (10 minutes)
+## 🎯 SCENARIO 11: YUM REPOSITORY MANAGEMENT (10 minutes)
 
 ### THE SITUATION:
 You need to configure package repositories: enable/disable default repos, add custom repos, and manage software installation.
@@ -1520,36 +1516,6 @@ sudo yum makecache
 sudo yum list available | head
 ```
 </details>
-
----
-
-## ✅ DRILL A COMPLETION CHECKLIST
-
-- [ ] Root password reset (RHEL 8 or 9 method)
-- [ ] Boot target changed to multi-user
-- [ ] MBR partitions created with fdisk
-- [ ] GPT partitions created with parted
-- [ ] LVM: PVs, VG, LVs created
-- [ ] LVs formatted (XFS and ext4)
-- [ ] Mounts persistent in /etc/fstab with UUID
-- [ ] LV extended successfully
-- [ ] LV reduced (ext4 only)
-- [ ] Swap partition configured
-- [ ] Swap file created
-- [ ] RAID1 array created
-- [ ] RAID status verified
-- [ ] Static IPv4 configured
-- [ ] Static IPv6 configured
-- [ ] Hostname set and in /etc/hosts
-- [ ] Firewall rules applied
-- [ ] SSH keys generated
-- [ ] SSH secured (no root, custom port)
-- [ ] SELinux contexts fixed
-- [ ] SELinux booleans configured
-- [ ] SELinux port labels added
-- [ ] System rebooted and all persists
-
-**Time Completed: _____ minutes**
 
 ---
 
