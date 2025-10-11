@@ -35,6 +35,8 @@ exec /sbin/init                                # Continue boot process
 # After logging in as root:
 systemctl get-default                          # Check current
 
+systemctl list-unit-files --type=target        # get all targets
+
 sudo systemctl set-default multi-user.target  # Set to text mode
 
 # Reboot to verify
@@ -740,19 +742,18 @@ Harden SSH: disable root login, move to port 2222, require key-based authenticat
 2. Configure SSH port 2222
 3. Disable root login and password authentication
 4. Update SELinux for port 2222
-5. Test secure connection
+5. Update Firewall for port 2222
+6. Test secure connection
 
 <details>
 <summary><b>🔍 SOLUTION - Click to Reveal</b></summary>
 
 ### Generate SSH Key:
 ```bash
-ssh-keygen -t rsa -b 4096 -C "admin@prod-server.example.com"
-
-# Set permissions
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/id_rsa
-chmod 644 ~/.ssh/id_rsa.pub
+# from host machine
+ssh-keygen -t rsa -b 4096 -C "admin"
+ssh-copy-id node.pub root@node1-ip
+ssh-copy-id node.pub root@node2-ip
 ```
 
 ### Configure SSH Server:
@@ -780,12 +781,21 @@ sudo semanage port -l | grep ssh
 ```bash
 sudo sshd -t
 sudo systemctl reload sshd
-sudo ss -tulpn | grep 2222
+sudo systemctl restart sshd
+```
+
+### Update Firewall
+```bash
+firewall-cmd --permanent --add-ports=2222/tcp
+firewall-cmd --reload
 ```
 
 ### Verification:
 ```bash
-ssh -p 2222 localhost
+ssh -p 2222 root@node1-ip
+ssh -p 2222 root@node2-ip
+
+# in both nodes
 sudo systemctl status sshd
 ```
 </details>
