@@ -54,14 +54,103 @@ systemctl get-default                          # Should show: multi-user.target
 
 ---
 
-## 🎯 SCENARIO 2: YUM REPOSITORY MANAGEMENT (10 minutes)
+## 🎯 SCENARIO 2: NETWORK CONFIGURATION (20 minutes)
+
+### THE SITUATION:
+Your server needs static IP addressing for production. Configure IPv4, IPv6, hostname, and DNS settings.
+
+**Network Details:**
+- IPv4: 192.168.122.50/24
+- Gateway: 192.168.122.1
+- DNS: 8.8.8.8, 8.8.4.4
+- IPv6: 2001:db8::50/64
+- Gateway: 2001:db8::1
+- Hostname: prod-server.example.com
+
+### YOUR TASKS:
+1. Configure static IPv4 and IPv6 addresses
+2. Set hostname to `prod-server.example.com`
+3. Configure DNS servers
+4. Add hostname to `/etc/hosts`
+5. Verify network connectivity
+
+<details>
+<summary><b>🔍 SOLUTION - Click to Reveal</b></summary>
+
+### Configure Network with nmcli:
+```bash
+# List connections
+nmcli con show
+
+# Set connection name
+CONN_NAME="System eth0"  # Replace with your connection
+
+# Configure IPv4
+sudo nmcli con mod "$CONN_NAME" ipv4.addresses 192.168.100.50/24
+sudo nmcli con mod "$CONN_NAME" ipv4.gateway 192.168.100.1
+sudo nmcli con mod "$CONN_NAME" ipv4.dns "8.8.8.8 8.8.4.4"
+sudo nmcli con mod "$CONN_NAME" ipv4.method manual
+
+# Configure IPv6
+sudo nmcli con mod "$CONN_NAME" ipv6.addresses 2001:db8::50/64
+sudo nmcli con mod "$CONN_NAME" ipv6.gateway 2001:db8::1
+sudo nmcli con mod "$CONN_NAME" ipv6.method manual
+
+# Apply changes
+sudo nmcli con up "$CONN_NAME"
+```
+
+### Set Hostname:
+```bash
+# Set hostname
+sudo hostnamectl set-hostname prod-server.example.com
+
+# Verify
+hostnamectl status
+hostname -f
+```
+
+### Configure /etc/hosts:
+```bash
+sudo vi /etc/hosts
+```
+
+Add:
+```
+192.168.100.50    prod-server.example.com prod-server
+2001:db8::50      prod-server.example.com prod-server
+```
+
+### Verify Network Configuration:
+```bash
+# Check IP addresses
+ip addr show
+
+# Check routing
+iptables -L -n -v
+ip6tables -L -n -v
+
+# Test connectivity
+ping -c 4 8.8.8.8
+ping6 -c 4 2001:4860:4860::8888
+
+# Test DNS resolution
+dig google.com
+host google.com
+nslookup google.com
+```
+</details>
+
+---
+
+## 🎯 SCENARIO 3: YUM REPOSITORY MANAGEMENT (10 minutes)
 
 ### THE SITUATION:
 You need to configure package repositories for software installation. The server needs access to both official RHEL repositories and EPEL for additional packages.
 
 ### YOUR TASKS:
 1. List all enabled repositories
-2. Add a custom local repository at `file:///repo/local`
+2. Add a custom local repository at `http://192.168.122.145/rhel9/BaseOS` and `http://192.168.122.145/rhel9/AppStream/`
 3. Install a test package from the custom repository
 4. Update repository cache
 
@@ -89,11 +178,18 @@ sudo vi /etc/yum.repos.d/local.repo
 
 Add:
 ```ini
-[local-repo]
-name=Local Repository
-baseurl=file:///repo/local
+[BaseOS]
+name=BaseOS
+baseurl=http://192.168.122.145/rhel9/BaseOS/
 enabled=1
 gpgcheck=0
+
+[AppStream]
+name=AppStream
+baseurl=http://192.168.122.145/rhel9/AppStream/
+enabled=1
+gpgcheck=0
+
 ```
 
 ```bash
@@ -129,7 +225,7 @@ sudo yum list installed | grep httpd
 
 ---
 
-## 🎯 SCENARIO 3: USER AND GROUP MANAGEMENT WITH SUDO (20 minutes)
+## 🎯 SCENARIO 4: USER AND GROUP MANAGEMENT WITH SUDO (20 minutes)
 
 ### THE SITUATION:
 Your organization needs proper user management with different access levels. Create users, configure password policies, and set up sudo access for system administration tasks.
@@ -137,11 +233,13 @@ Your organization needs proper user management with different access levels. Cre
 ### YOUR TASKS:
 1. Create users: `john`, `mary`, `developer1`
 2. Create groups: `developers`, `admins`
-3. Configure password aging for `john`: max 90 days, min 7 days, warn 14 days
-4. Force `mary` to change password on next login
-5. Add `john` to wheel group for sudo access
-6. Create custom sudo rule for `developer1` to restart httpd only
-7. Test sudo access for all users
+3. Add `john` and `developer1` to `developers` group
+4. Add `mary` to `admins` group
+5. Configure password aging for `john`: max 90 days, min 7 days, warn 14 days
+6. Force `mary` to change password on next login
+7. Add `john` to wheel group for sudo access
+8. Create custom sudo rule for `developer1` to restart httpd only
+9. Test sudo access for all users
 
 <details>
 <summary><b>🔍 SOLUTION - Click to Reveal</b></summary>
@@ -233,88 +331,77 @@ sudo -l -U developer1
 
 ---
 
-## 🎯 SCENARIO 4: NETWORK CONFIGURATION (20 minutes)
+## 🎯 SCENARIO 5: SSH SECURITY HARDENING (15 minutes)
 
 ### THE SITUATION:
-Your server needs static IP addressing for production. Configure IPv4, IPv6, hostname, and DNS settings.
-
-**Network Details:**
-- IPv4: 192.168.100.50/24
-- Gateway: 192.168.100.1
-- DNS: 8.8.8.8, 8.8.4.4
-- IPv6: 2001:db8::50/64
-- Gateway: 2001:db8::1
-- Hostname: prod-server.example.com
+Harden SSH: disable root login, move to port 2222, require key-based authentication.
 
 ### YOUR TASKS:
-1. Configure static IPv4 and IPv6 addresses
-2. Set hostname to `prod-server.example.com`
-3. Configure DNS servers
-4. Add hostname to `/etc/hosts`
-5. Verify network connectivity
+1. Generate SSH key pair (RSA, 4096 bits)
+2. Configure SSH port 2222
+3. Disable root login and password authentication
+4. Update SELinux for port 2222
+5. Update Firewall for port 2222
+6. Test secure connection
 
 <details>
 <summary><b>🔍 SOLUTION - Click to Reveal</b></summary>
 
-### Configure Network with nmcli:
+### Generate SSH Key:
 ```bash
-# List connections
-nmcli con show
-
-# Set connection name
-CONN_NAME="System eth0"  # Replace with your connection
-
-# Configure IPv4
-sudo nmcli con mod "$CONN_NAME" ipv4.addresses 192.168.100.50/24
-sudo nmcli con mod "$CONN_NAME" ipv4.gateway 192.168.100.1
-sudo nmcli con mod "$CONN_NAME" ipv4.dns "8.8.8.8 8.8.4.4"
-sudo nmcli con mod "$CONN_NAME" ipv4.method manual
-
-# Configure IPv6
-sudo nmcli con mod "$CONN_NAME" ipv6.addresses 2001:db8::50/64
-sudo nmcli con mod "$CONN_NAME" ipv6.gateway 2001:db8::1
-sudo nmcli con mod "$CONN_NAME" ipv6.method manual
-
-# Apply changes
-sudo nmcli con up "$CONN_NAME"
+# from host machine
+ssh-keygen -t rsa -b 4096 -C "admin"
+ssh-copy-id node.pub root@node1-ip
+ssh-copy-id node.pub root@node2-ip
 ```
 
-### Set Hostname:
+### Configure SSH Server:
 ```bash
-# Set hostname
-sudo hostnamectl set-hostname prod-server.example.com
+sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
 
-# Verify
-hostnamectl status
-hostname -f
+sudo vi /etc/ssh/sshd_config
 ```
 
-### Configure /etc/hosts:
+Modify:
+```
+Port 2222
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+```
+
+### Update SELinux:
 ```bash
-sudo vi /etc/hosts
+sudo semanage port -a -t ssh_port_t -p tcp 2222
+sudo semanage port -l | grep ssh
 ```
 
-Add:
+### Reload SSH:
+```bash
+sudo sshd -t
+sudo systemctl reload sshd
+sudo systemctl restart sshd
 ```
-192.168.100.50    prod-server.example.com prod-server
-2001:db8::50      prod-server.example.com prod-server
+
+### Update Firewall
+```bash
+firewall-cmd --permanent --add-ports=2222/tcp
+firewall-cmd --reload
 ```
 
 ### Verification:
 ```bash
-ip addr show
-ip route show
-ip -6 route show
-cat /etc/resolv.conf
-hostnamectl
-ping -c 3 8.8.8.8
-ping -c 3 google.com
+ssh -p 2222 root@node1-ip
+ssh -p 2222 root@node2-ip
+
+# in both nodes
+sudo systemctl status sshd
 ```
 </details>
 
 ---
 
-## 🎯 SCENARIO 5: DISK PARTITIONING FOR NEW SERVER (20 minutes)
+## 🎯 SCENARIO 6: DISK PARTITIONING FOR NEW SERVER (20 minutes)
 
 ### THE SITUATION:
 You're setting up a new server with additional storage. You need to create partitions using `cfdisk` for both MBR and GPT layouts.
@@ -378,7 +465,7 @@ sudo fdisk -l /dev/vdc
 
 ---
 
-## 🎯 SCENARIO 6: ENTERPRISE STORAGE WITH LVM (25 minutes)
+## 🎯 SCENARIO 7: ENTERPRISE STORAGE WITH LVM (25 minutes)
 
 ### THE SITUATION:
 Configure LVM storage with various extension and reduction scenarios for both XFS and ext4 filesystems.
@@ -442,6 +529,9 @@ sudo mount /dev/datavg/backuplv /backup
 # Get UUIDs
 sudo blkid /dev/datavg/datalv
 sudo blkid /dev/datavg/backuplv
+# Tips 
+blkid -s UUID -o value /dev/datavg/backuplv >> /etc/fstab # this will append the UUID in /etc/fstab
+blkid -s UUID -o value /dev/datavg/datalv >> /etc/fstab # this will append the UUID in /etc/fstab
 
 # Edit fstab
 sudo vi /etc/fstab
@@ -525,7 +615,7 @@ lsblk
 
 ---
 
-## 🎯 SCENARIO 7: SWAP SPACE CONFIGURATION (10 minutes)
+## 🎯 SCENARIO 8: SWAP SPACE CONFIGURATION (10 minutes)
 
 ### THE SITUATION:
 The server needs additional swap space for memory-intensive operations.
@@ -599,7 +689,7 @@ cat /proc/swaps
 
 ---
 
-## 🎯 SCENARIO 8: VFAT FILESYSTEM & USB STORAGE (10 minutes)
+## 🎯 SCENARIO 9: VFAT FILESYSTEM & USB STORAGE (10 minutes)
 
 ### THE SITUATION:
 Configure VFAT filesystem for Windows compatibility and USB drive usage.
@@ -672,7 +762,7 @@ ls -l /mnt/usb
 
 ---
 
-## 🎯 SCENARIO 9: FIREWALL CONFIGURATION (15 minutes)
+## 🎯 SCENARIO 10: FIREWALL CONFIGURATION (15 minutes)
 
 ### THE SITUATION:
 Configure firewalld for web server with custom SSH port and trusted internal network.
@@ -732,158 +822,8 @@ sudo firewall-cmd --list-all-zones
 
 ---
 
-## 🎯 SCENARIO 10: SSH SECURITY HARDENING (15 minutes)
 
-### THE SITUATION:
-Harden SSH: disable root login, move to port 2222, require key-based authentication.
-
-### YOUR TASKS:
-1. Generate SSH key pair (RSA, 4096 bits)
-2. Configure SSH port 2222
-3. Disable root login and password authentication
-4. Update SELinux for port 2222
-5. Update Firewall for port 2222
-6. Test secure connection
-
-<details>
-<summary><b>🔍 SOLUTION - Click to Reveal</b></summary>
-
-### Generate SSH Key:
-```bash
-# from host machine
-ssh-keygen -t rsa -b 4096 -C "admin"
-ssh-copy-id node.pub root@node1-ip
-ssh-copy-id node.pub root@node2-ip
-```
-
-### Configure SSH Server:
-```bash
-sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
-
-sudo vi /etc/ssh/sshd_config
-```
-
-Modify:
-```
-Port 2222
-PermitRootLogin no
-PasswordAuthentication no
-PubkeyAuthentication yes
-```
-
-### Update SELinux:
-```bash
-sudo semanage port -a -t ssh_port_t -p tcp 2222
-sudo semanage port -l | grep ssh
-```
-
-### Reload SSH:
-```bash
-sudo sshd -t
-sudo systemctl reload sshd
-sudo systemctl restart sshd
-```
-
-### Update Firewall
-```bash
-firewall-cmd --permanent --add-ports=2222/tcp
-firewall-cmd --reload
-```
-
-### Verification:
-```bash
-ssh -p 2222 root@node1-ip
-ssh -p 2222 root@node2-ip
-
-# in both nodes
-sudo systemctl status sshd
-```
-</details>
-
----
-
-## 🎯 SCENARIO 11: SELINUX CONFIGURATION (20 minutes)
-
-### THE SITUATION:
-Configure SELinux for Apache web server with custom directory and port.
-
-### YOUR TASKS:
-1. Verify SELinux is enforcing
-2. Create `/web` directory for Apache
-3. Fix SELinux context for `/web`
-4. Allow Apache network connections (boolean)
-5. Configure SELinux port label for port 8080
-6. Verify all settings
-
-<details>
-<summary><b>🔍 SOLUTION - Click to Reveal</b></summary>
-
-### Check SELinux Status:
-```bash
-getenforce
-sestatus
-
-# Set enforcing if needed
-sudo setenforce 1
-```
-
-### Create Web Directory:
-```bash
-sudo mkdir -p /web/html
-echo "<h1>Test Page</h1>" | sudo tee /web/html/index.html
-
-# Check context (wrong)
-ls -Z /web
-```
-
-### Fix SELinux Context:
-```bash
-# Add context rule
-sudo semanage fcontext -a -t httpd_sys_content_t '/web(/.*)?'
-
-# Apply
-sudo restorecon -Rv /web
-
-# Verify
-ls -Z /web/html/
-```
-
-### Configure SELinux Booleans:
-```bash
-# Check current value
-getsebool httpd_can_network_connect
-
-# Enable
-sudo setsebool -P httpd_can_network_connect on
-
-# Verify
-getsebool httpd_can_network_connect
-```
-
-### Configure Port Label:
-```bash
-# View current ports
-sudo semanage port -l | grep http_port_t
-
-# Add port 8080
-sudo semanage port -a -t http_port_t -p tcp 8080
-
-# Verify
-sudo semanage port -l | grep http_port_t
-```
-
-### Verification:
-```bash
-getenforce
-ls -Z /web/html/
-getsebool httpd_can_network_connect
-sudo semanage port -l | grep 8080
-```
-</details>
-
----
-
-## 🎯 SCENARIO 12: CONTAINER MANAGEMENT (15 minutes)
+## 🎯 SCENARIO 11: CONTAINER MANAGEMENT (15 minutes)
 
 ### THE SITUATION:
 Deploy containerized nginx with persistent storage and systemd service.
